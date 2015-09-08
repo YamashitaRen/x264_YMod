@@ -91,22 +91,24 @@ static void x264_frame_dump( x264_t *h )
 
     /* Write the frame in display order */
     int frame_size = FRAME_SIZE( h->param.i_height * h->param.i_width * sizeof(pixel) );
-    fseek( f, (uint64_t)h->fdec->i_frame * frame_size, SEEK_SET );
-    for( int p = 0; p < (CHROMA444 ? 3 : 1); p++ )
-        for( int y = 0; y < h->param.i_height; y++ )
-            fwrite( &h->fdec->plane[p][y*h->fdec->i_stride[p]], sizeof(pixel), h->param.i_width, f );
-    if( !CHROMA444 )
+    if( !fseek( f, (int64_t)h->fdec->i_frame * frame_size, SEEK_SET ) )
     {
-        int cw = h->param.i_width>>1;
-        int ch = h->param.i_height>>CHROMA_V_SHIFT;
-        pixel *planeu = x264_malloc( (cw*ch*2+32)*sizeof(pixel) );
-        if( planeu )
+        for( int p = 0; p < (CHROMA444 ? 3 : 1); p++ )
+            for( int y = 0; y < h->param.i_height; y++ )
+                fwrite( &h->fdec->plane[p][y*h->fdec->i_stride[p]], sizeof(pixel), h->param.i_width, f );
+        if( !CHROMA444 )
         {
-            pixel *planev = planeu + cw*ch + 16;
-            h->mc.plane_copy_deinterleave( planeu, cw, planev, cw, h->fdec->plane[1], h->fdec->i_stride[1], cw, ch );
-            fwrite( planeu, 1, cw*ch*sizeof(pixel), f );
-            fwrite( planev, 1, cw*ch*sizeof(pixel), f );
-            x264_free( planeu );
+            int cw = h->param.i_width>>1;
+            int ch = h->param.i_height>>CHROMA_V_SHIFT;
+            pixel *planeu = x264_malloc( (cw*ch*2+32)*sizeof(pixel) );
+            if( planeu )
+            {
+                pixel *planev = planeu + cw*ch + 16;
+                h->mc.plane_copy_deinterleave( planeu, cw, planev, cw, h->fdec->plane[1], h->fdec->i_stride[1], cw, ch );
+                fwrite( planeu, 1, cw*ch*sizeof(pixel), f );
+                fwrite( planev, 1, cw*ch*sizeof(pixel), f );
+                x264_free( planeu );
+            }
         }
     }
     fclose( f );
@@ -474,12 +476,12 @@ static int x264_validate_parameters( x264_t *h, int b_open )
 
     int i_csp = h->param.i_csp & X264_CSP_MASK;
 #if X264_CHROMA_FORMAT
-    if( CHROMA_FORMAT != CHROMA_420 && i_csp >= X264_CSP_I420 && i_csp <= X264_CSP_NV12 )
+    if( CHROMA_FORMAT != CHROMA_420 && i_csp >= X264_CSP_I420 && i_csp < X264_CSP_I422 )
     {
         x264_log( h, X264_LOG_ERROR, "not compiled with 4:2:0 support\n" );
         return -1;
     }
-    else if( CHROMA_FORMAT != CHROMA_422 && i_csp >= X264_CSP_I422 && i_csp <= X264_CSP_V210 )
+    else if( CHROMA_FORMAT != CHROMA_422 && i_csp >= X264_CSP_I422 && i_csp < X264_CSP_I444 )
     {
         x264_log( h, X264_LOG_ERROR, "not compiled with 4:2:2 support\n" );
         return -1;
@@ -492,36 +494,41 @@ static int x264_validate_parameters( x264_t *h, int b_open )
 #endif
     if( i_csp <= X264_CSP_NONE || i_csp >= X264_CSP_MAX )
     {
-        x264_log( h, X264_LOG_ERROR, "invalid CSP (only I420/YV12/NV12/I422/YV16/NV16/I444/YV24/BGR/BGRA/RGB supported)\n" );
+        x264_log( h, X264_LOG_ERROR, "invalid CSP (only I420/YV12/NV12/NV21/I422/YV16/NV16/I444/YV24/BGR/BGRA/RGB supported)\n" );
         return -1;
     }
 
-    if( i_csp < X264_CSP_I444 && h->param.i_width % 2 )
+    int w_mod = i_csp < X264_CSP_I444 ? 2 : 1;
+    int h_mod = (i_csp < X264_CSP_I422 ? 2 : 1) << PARAM_INTERLACED;
+    if( h->param.i_width % w_mod )
     {
-        x264_log( h, X264_LOG_ERROR, "width not divisible by 2 (%dx%d)\n",
-                  h->param.i_width, h->param.i_height );
+        x264_log( h, X264_LOG_ERROR, "width not divisible by %d (%dx%d)\n",
+                  w_mod, h->param.i_width, h->param.i_height );
         return -1;
     }
-
-    if( i_csp < X264_CSP_I422 && PARAM_INTERLACED && h->param.i_height % 4 )
+    if( h->param.i_height % h_mod )
     {
-        x264_log( h, X264_LOG_ERROR, "height not divisible by 4 (%dx%d)\n",
-                  h->param.i_width, h->param.i_height );
+        x264_log( h, X264_LOG_ERROR, "height not divisible by %d (%dx%d)\n",
+                  h_mod, h->param.i_width, h->param.i_height );
         return -1;
     }
 
-    if( (i_csp < X264_CSP_I422 || PARAM_INTERLACED) && h->param.i_height % 2 )
-    {
-        x264_log( h, X264_LOG_ERROR, "height not divisible by 2 (%dx%d)\n",
-                  h->param.i_width, h->param.i_height );
-        return -1;
-    }
-
-    if( (h->param.crop_rect.i_left + h->param.crop_rect.i_right ) >= h->param.i_width ||
-        (h->param.crop_rect.i_top  + h->param.crop_rect.i_bottom) >= h->param.i_height )
+    if( h->param.crop_rect.i_left   >= h->param.i_width ||
+        h->param.crop_rect.i_right  >= h->param.i_width ||
+        h->param.crop_rect.i_top    >= h->param.i_height ||
+        h->param.crop_rect.i_bottom >= h->param.i_height ||
+        h->param.crop_rect.i_left + h->param.crop_rect.i_right  >= h->param.i_width ||
+        h->param.crop_rect.i_top  + h->param.crop_rect.i_bottom >= h->param.i_height )
     {
         x264_log( h, X264_LOG_ERROR, "invalid crop-rect %u,%u,%u,%u\n", h->param.crop_rect.i_left,
                   h->param.crop_rect.i_top, h->param.crop_rect.i_right,  h->param.crop_rect.i_bottom );
+        return -1;
+    }
+    if( h->param.crop_rect.i_left % w_mod || h->param.crop_rect.i_right  % w_mod ||
+        h->param.crop_rect.i_top  % h_mod || h->param.crop_rect.i_bottom % h_mod )
+    {
+        x264_log( h, X264_LOG_ERROR, "crop-rect %u,%u,%u,%u not divisible by %dx%d\n", h->param.crop_rect.i_left,
+                  h->param.crop_rect.i_top, h->param.crop_rect.i_right,  h->param.crop_rect.i_bottom, w_mod, h_mod );
         return -1;
     }
 
@@ -532,7 +539,13 @@ static int x264_validate_parameters( x264_t *h, int b_open )
     }
 
     if( h->param.i_threads == X264_THREADS_AUTO )
+    {
         h->param.i_threads = x264_cpu_num_processors() * (h->param.b_sliced_threads?2:3)/2;
+        /* Avoid too many threads as they don't improve performance and
+         * complicate VBV. Capped at an arbitrary 2 rows per thread. */
+        int max_threads = X264_MAX( 1, (h->param.i_height+15)/16 / 2 );
+        h->param.i_threads = X264_MIN( h->param.i_threads, max_threads );
+    }
     int max_sliced_threads = X264_MAX( 1, (h->param.i_height+15)/16 / 4 );
     if( h->param.i_threads > 1 )
     {
@@ -586,10 +599,19 @@ static int x264_validate_parameters( x264_t *h, int b_open )
         h->param.i_dpb_size = 1;
     }
 
-    if( h->param.i_frame_packing < -1 || h->param.i_frame_packing > 5 )
+    if( h->param.i_frame_packing < -1 || h->param.i_frame_packing > 7 )
     {
         x264_log( h, X264_LOG_WARNING, "ignoring unknown frame packing value\n" );
         h->param.i_frame_packing = -1;
+    }
+    if( h->param.i_frame_packing == 7 &&
+        ((h->param.i_width - h->param.crop_rect.i_left - h->param.crop_rect.i_right)  % 3 ||
+         (h->param.i_height - h->param.crop_rect.i_top - h->param.crop_rect.i_bottom) % 3) )
+    {
+        x264_log( h, X264_LOG_ERROR, "cropped resolution %dx%d not compatible with tile format frame packing\n",
+                  h->param.i_width - h->param.crop_rect.i_left - h->param.crop_rect.i_right,
+                  h->param.i_height - h->param.crop_rect.i_top - h->param.crop_rect.i_bottom );
+        return -1;
     }
 
     /* Detect default ffmpeg settings and terminate with an error. */
@@ -1038,9 +1060,9 @@ static int x264_validate_parameters( x264_t *h, int b_open )
         h->param.i_fps_num = 25;
         h->param.i_fps_den = 1;
     }
-    float fps = (float) h->param.i_fps_num / h->param.i_fps_den;
+    float fps = (float)h->param.i_fps_num / h->param.i_fps_den;
     if( h->param.i_keyint_min == X264_KEYINT_MIN_AUTO )
-        h->param.i_keyint_min = X264_MIN( h->param.i_keyint_max / 10, fps );
+        h->param.i_keyint_min = X264_MIN( h->param.i_keyint_max / 10, (int)fps );
     h->param.i_keyint_min = x264_clip3( h->param.i_keyint_min, 1, h->param.i_keyint_max/2+1 );
     h->param.rc.i_lookahead = x264_clip3( h->param.rc.i_lookahead, 0, X264_LOOKAHEAD_MAX );
     {
@@ -1780,6 +1802,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
         else if( !x264_is_regular_file( f ) )
         {
             x264_log( h, X264_LOG_ERROR, "dump_yuv: incompatible with non-regular file %s\n", h->param.psz_dump_yuv );
+            fclose( f );
             goto fail;
         }
         fclose( f );
@@ -3121,9 +3144,8 @@ static void x264_thread_sync_context( x264_t *dst, x264_t *src )
 
 static void x264_thread_sync_stat( x264_t *dst, x264_t *src )
 {
-    if( dst == src )
-        return;
-    memcpy( &dst->stat.i_frame_count, &src->stat.i_frame_count, sizeof(dst->stat) - sizeof(dst->stat.frame) );
+    if( dst != src )
+        memcpy( &dst->stat, &src->stat, offsetof(x264_t, stat.frame) - offsetof(x264_t, stat) );
 }
 
 static void *x264_slices_write( x264_t *h )
@@ -3325,6 +3347,12 @@ int     x264_encoder_encode( x264_t *h,
     /* ------------------- Setup new frame from picture -------------------- */
     if( pic_in != NULL )
     {
+        if( h->lookahead->b_exit_thread )
+        {
+            x264_log( h, X264_LOG_ERROR, "lookahead thread is already stopped\n" );
+            return -1;
+        }
+
         /* 1: Copy the picture to a frame and move it to a buffer */
         x264_frame_t *fenc = x264_frame_pop_unused( h, 0 );
         if( !fenc )

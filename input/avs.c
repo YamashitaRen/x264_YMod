@@ -175,8 +175,9 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     FILE *fh = x264_fopen( psz_filename, "r" );
     if( !fh )
         return -1;
-    FAIL_IF_ERROR( !x264_is_regular_file( fh ), "AVS input is incompatible with non-regular file `%s'\n", psz_filename );
+    int b_regular = x264_is_regular_file( fh );
     fclose( fh );
+    FAIL_IF_ERROR( !b_regular, "AVS input is incompatible with non-regular file `%s'\n", psz_filename );
 
     avs_hnd_t *h = malloc( sizeof(avs_hnd_t) );
     if( !h )
@@ -282,8 +283,8 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
                        "input clip height not divisible by 4 (%dx%d)\n", vi->width, vi->height )
         FAIL_IF_ERROR( (opt->output_csp == X264_CSP_I420 || info->interlaced) && (vi->height&1),
                        "input clip height not divisible by 2 (%dx%d)\n", vi->width, vi->height )
-        char conv_func[14] = { "ConvertTo" };
-        strcat( conv_func, csp );
+        char conv_func[14];
+        snprintf( conv_func, sizeof(conv_func), "ConvertTo%s", csp );
         char matrix[7] = "";
         int arg_count = 2;
         /* if doing a rgb <-> yuv conversion then range is handled via 'matrix'. though it's only supported in 2.56+ */
@@ -291,8 +292,7 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
         {
             // if converting from yuv, then we specify the matrix for the input, otherwise use the output's.
             int use_pc_matrix = avs_is_yuv( vi ) ? opt->input_range == RANGE_PC : opt->output_range == RANGE_PC;
-            strcpy( matrix, use_pc_matrix ? "PC." : "Rec" );
-            strcat( matrix, "601" ); /* FIXME: use correct coefficients */
+            snprintf( matrix, sizeof(matrix), "%s601", use_pc_matrix ? "PC." : "Rec" ); /* FIXME: use correct coefficients */
             arg_count++;
             // notification that the input range has changed to the desired one
             opt->input_range = opt->output_range;

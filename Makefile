@@ -143,6 +143,15 @@ OBJASM  = $(ASMSRC:%.S=%.o)
 endif
 endif
 
+# MSA optims
+ifeq ($(SYS_ARCH),MIPS)
+ifneq ($(findstring HAVE_MSA 1, $(CONFIG)),)
+SRCS += common/mips/mc-c.c common/mips/dct-c.c \
+        common/mips/deblock-c.c common/mips/pixel-c.c \
+        common/mips/predict-c.c common/mips/quant-c.c
+endif
+endif
+
 ifneq ($(HAVE_GETOPT_LONG),1)
 SRCCLI += extras/getopt.c
 endif
@@ -267,7 +276,7 @@ clean:
 	rm -f $(SRC2:%.c=%.gcda) $(SRC2:%.c=%.gcno) *.dyn pgopti.dpi pgopti.dpi.lock *.pgd *.pgc
 
 distclean: clean
-	rm -f config.mak x264_config.h config.h config.log x264.pc x264.def
+	rm -f config.mak x264_config.h config.h config.log x264.pc x264.def conftest*
 
 install-cli: cli
 	$(INSTALL) -d $(DESTDIR)$(bindir)
