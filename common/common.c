@@ -1300,12 +1300,12 @@ int x264_param_parse( x264_param_t *p, const char *name, const char *value )
                  2 == sscanf( value, "%f,%f", &p->rc.f_aq3_strengths[0][0], &p->rc.f_aq3_strengths[1][0] ) )
         {
             p->rc.f_aq3_strength = 0.0;
-            for( i = 0; i < 2; i++ )
+            for( int i = 0; i < 2; i++ )
                 for( int j = 1; j < 4; j++ )
                     p->rc.f_aq3_strengths[i][j] = p->rc.f_aq3_strengths[i][0];
         }
         else if( sscanf( value, "%f", &p->rc.f_aq3_strength ) )
-            for( i = 0; i < 2; i++ )
+            for( int i = 0; i < 2; i++ )
                 for( int j = 0; j < 4; j++ )
                     p->rc.f_aq3_strengths[i][j] = p->rc.f_aq3_strength;
     }
