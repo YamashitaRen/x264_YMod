@@ -1,0 +1,11 @@
+Included patches :
+- Film Grain Optimization (add --fgo)
+- Fade Compensation (add --fade-compensate)
+- Auto VBV settings (automation of  --vbv-maxrate et --vbv-bufsize, according to level)
+- Log File (add --log-file et --log-file-level)
+- Level Force (add --level-force)
+- Profile Force (add --profile-force)
+- Cosmetic (print crf precision with 4 decimals)
+- Devices (add --device)
+- TriAQ (add aq2 and aq3, read fullhelp)
+- Variable progress precision, print encoded file size & estimated total size (a much welcomed request, do exactly what it says, you may have to specify --frames in order to make it works)
