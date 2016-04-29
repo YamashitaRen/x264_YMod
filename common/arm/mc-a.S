@@ -1,7 +1,7 @@
 /*****************************************************************************
  * mc.S: arm motion compensation
  *****************************************************************************
- * Copyright (C) 2009-2015 x264 project
+ * Copyright (C) 2009-2016 x264 project
  *
  * Authors: David Conrad <lessen42@gmail.com>
  *          Mans Rullgard <mans@mansr.com>
@@ -140,12 +140,13 @@ MEMCPY_ALIGNED 16, 8
 MEMCPY_ALIGNED  8, 16
 MEMCPY_ALIGNED  8, 8
 
-.section .rodata
-memcpy_table:
+const memcpy_table align=2, relocate=1
 .word memcpy_aligned_16_16_neon
 .word memcpy_aligned_16_8_neon
 .word memcpy_aligned_8_16_neon
 .word memcpy_aligned_8_8_neon
+endconst
+
 .text
 
 .ltorg
@@ -1829,8 +1830,8 @@ function x264_mbtree_propagate_list_internal_neon
 8:
     subs            r12, r12,  #8
     vld1.16         {q14},  [r1, :128]!      @ propagate_amount
-    vld1.16         {q15},  [r2, :128]!      @ lowres_cost
-    vld1.16         {q8, q9},  [r0, :128]!
+    vld1.16         {q15},  [r2]!            @ lowres_cost
+    vld1.16         {q8, q9},  [r0]!
     vand            q15, q15, q10
     vceq.u16        q1,  q15, q10
     vmull.u16       q12, d28, d4

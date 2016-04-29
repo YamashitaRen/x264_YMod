@@ -1,7 +1,7 @@
 /*****************************************************************************
  * depth.c: bit-depth conversion video filter
  *****************************************************************************
- * Copyright (C) 2010-2015 x264 project
+ * Copyright (C) 2010-2016 x264 project
  *
  * Authors: Oskar Arvidsson <oskar@irock.se>
  *
@@ -200,7 +200,7 @@ static int init( hnd_t *handle, cli_vid_filter_t *filter, video_info_t *info,
 
     if( opt_string )
     {
-        static const char *optlist[] = { "bit_depth", NULL };
+        static const char * const optlist[] = { "bit_depth", NULL };
         char **opts = x264_split_options( opt_string, optlist );
 
         if( opts )
@@ -211,7 +211,7 @@ static int init( hnd_t *handle, cli_vid_filter_t *filter, video_info_t *info,
             ret = bit_depth < 8 || bit_depth > 16;
             csp = bit_depth > 8 ? csp | X264_CSP_HIGH_DEPTH : csp & ~X264_CSP_HIGH_DEPTH;
             change_fmt = (info->csp ^ csp) & X264_CSP_HIGH_DEPTH;
-            x264_free_string_array( opts );
+            free( opts );
         }
         else
             ret = 1;

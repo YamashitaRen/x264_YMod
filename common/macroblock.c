@@ -1,7 +1,7 @@
 /*****************************************************************************
  * macroblock.c: macroblock common functions
  *****************************************************************************
- * Copyright (C) 2003-2015 x264 project
+ * Copyright (C) 2003-2016 x264 project
  *
  * Authors: Fiona Glaser <fiona@x264.com>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -27,7 +27,6 @@
  *****************************************************************************/
 
 #include "common.h"
-#include "encoder/me.h"
 
 #define MC_LUMA(list,p) \
     h->mc.mc_luma( &h->mb.pic.p_fdec[p][4*y*FDEC_STRIDE+4*x], FDEC_STRIDE, \

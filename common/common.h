@@ -1,7 +1,7 @@
 /*****************************************************************************
  * common.h: misc common functions
  *****************************************************************************
- * Copyright (C) 2003-2015 x264 project
+ * Copyright (C) 2003-2016 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -972,6 +972,12 @@ struct x264_t
     x264_opencl_t opencl;
 #endif
 };
+
+typedef struct
+{
+    int sad;
+    int16_t mv[2];
+} mvsad_t;
 
 // included at the end because it needs x264_t
 #include "macroblock.h"

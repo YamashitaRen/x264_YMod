@@ -1,7 +1,7 @@
 /*****************************************************************************
  * dct.h: x86 transform and zigzag
  *****************************************************************************
- * Copyright (C) 2003-2015 x264 project
+ * Copyright (C) 2003-2016 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -76,6 +76,10 @@ void x264_dct4x4dc_avx       ( int32_t d[16] );
 void x264_idct4x4dc_mmx      ( int16_t d[16] );
 void x264_idct4x4dc_sse2     ( int32_t d[16] );
 void x264_idct4x4dc_avx      ( int32_t d[16] );
+
+void x264_dct2x4dc_mmx2( dctcoef dct[8], dctcoef dct4x4[8][16] );
+void x264_dct2x4dc_sse2( dctcoef dct[8], dctcoef dct4x4[8][16] );
+void x264_dct2x4dc_avx ( dctcoef dct[8], dctcoef dct4x4[8][16] );
 
 void x264_sub8x8_dct8_mmx    ( int16_t dct   [64], uint8_t *pix1, uint8_t *pix2 );
 void x264_sub16x16_dct8_mmx  ( int16_t dct[4][64], uint8_t *pix1, uint8_t *pix2 );

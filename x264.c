@@ -1,7 +1,7 @@
 /*****************************************************************************
  * x264: top-level x264cli functions
  *****************************************************************************
- * Copyright (C) 2003-2015 x264 project
+ * Copyright (C) 2003-2016 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -38,7 +38,6 @@
 #endif
 
 #include <signal.h>
-#define _GNU_SOURCE
 #include <getopt.h>
 #include "common/common.h"
 #include "x264cli.h"
@@ -1948,19 +1947,23 @@ generic_option:
 
 static void parse_qpfile( cli_opt_t *opt, x264_picture_t *pic, int i_frame )
 {
-    int num = -1, qp, ret;
+    int num = -1;
     char type;
-    uint64_t file_pos;
     while( num < i_frame )
     {
-        file_pos = ftell( opt->qpfile );
-        qp = -1;
-        ret = fscanf( opt->qpfile, "%d %c%*[ \t]%d\n", &num, &type, &qp );
+        int64_t file_pos = ftell( opt->qpfile );
+        int qp = -1;
+        int ret = fscanf( opt->qpfile, "%d %c%*[ \t]%d\n", &num, &type, &qp );
         pic->i_type = X264_TYPE_AUTO;
         pic->i_qpplus1 = X264_QP_AUTO;
         if( num > i_frame || ret == EOF )
         {
-            fseek( opt->qpfile, file_pos, SEEK_SET );
+            if( file_pos < 0 || fseek( opt->qpfile, file_pos, SEEK_SET ) )
+            {
+                x264_cli_log( "x264", X264_LOG_ERROR, "qpfile seeking failed\n" );
+                fclose( opt->qpfile );
+                opt->qpfile = NULL;
+            }
             break;
         }
         if( num < i_frame && ret >= 2 )

@@ -1,7 +1,7 @@
 /*****************************************************************************
  * mc.c: ppc motion compensation
  *****************************************************************************
- * Copyright (C) 2003-2015 x264 project
+ * Copyright (C) 2003-2016 x264 project
  *
  * Authors: Eric Petit <eric.petit@lapsus.org>
  *          Guillaume Poirier <gpoirier@mplayerhq.hu>
@@ -24,15 +24,7 @@
  * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdarg.h>
-
-#include "x264.h"
 #include "common/common.h"
-#include "common/mc.h"
 #include "mc.h"
 #include "ppccommon.h"
 

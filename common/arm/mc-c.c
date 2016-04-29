@@ -1,7 +1,7 @@
 /*****************************************************************************
  * mc-c.c: arm motion compensation
  *****************************************************************************
- * Copyright (C) 2009-2015 x264 project
+ * Copyright (C) 2009-2016 x264 project
  *
  * Authors: David Conrad <lessen42@gmail.com>
  *          Janne Grunau <janne-x264@jannau.net>
@@ -67,6 +67,7 @@ void x264_store_interleave_chroma_neon( pixel *dst, intptr_t i_dst, pixel *srcu,
 void x264_load_deinterleave_chroma_fdec_neon( pixel *dst, pixel *src, intptr_t i_src, int height );
 void x264_load_deinterleave_chroma_fenc_neon( pixel *dst, pixel *src, intptr_t i_src, int height );
 
+#if !HIGH_BIT_DEPTH
 #define MC_WEIGHT(func)\
 void x264_mc_weight_w20##func##_neon( uint8_t *, intptr_t, uint8_t *, intptr_t, const x264_weight_t *, int );\
 void x264_mc_weight_w16##func##_neon( uint8_t *, intptr_t, uint8_t *, intptr_t, const x264_weight_t *, int );\
@@ -87,6 +88,7 @@ MC_WEIGHT()
 MC_WEIGHT(_nodenom)
 MC_WEIGHT(_offsetadd)
 MC_WEIGHT(_offsetsub)
+#endif
 
 void x264_mc_copy_w4_neon ( uint8_t *, intptr_t, uint8_t *, intptr_t, int );
 void x264_mc_copy_w8_neon ( uint8_t *, intptr_t, uint8_t *, intptr_t, int );
